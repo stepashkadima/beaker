@@ -106,7 +106,7 @@ class Session(dict):
                  key='beaker.session.id', timeout=None, cookie_expires=True,
                  cookie_domain=None, cookie_path='/', secret=None,
                  secure=False, namespace_class=None, httponly=False,
-                 encrypt_key=None, validate_key=None, **namespace_args):
+                 encrypt_key=None, validate_key=None, userid=None, **namespace_args):
         if not type:
             if data_dir:
                 self.type = 'file'
@@ -122,6 +122,7 @@ class Session(dict):
         self.request = request
         self.data_dir = data_dir
         self.key = key
+        self._userid = userid
 
         self.timeout = timeout
         self.use_cookies = use_cookies
@@ -321,6 +322,7 @@ class Session(dict):
         self.namespace = self.namespace_class(self.id,
             data_dir=self.data_dir,
             digest_filenames=False,
+            userid = self._userid,
             **self.namespace_args)
         now = time.time()
         if self.use_cookies:
@@ -402,6 +404,7 @@ class Session(dict):
                                     self.id,
                                     data_dir=self.data_dir,
                                     digest_filenames=False,
+                                    userid = self._userid,
                                     **self.namespace_args)
 
         self.namespace.acquire_write_lock(replace=True)
@@ -627,6 +630,9 @@ class CookieSession(Session):
 
 
 class SessionObject(object):
+
+    _userid = None
+
     """Session proxy/lazy creator
 
     This object proxies access to the actual session object, so that in
@@ -651,7 +657,7 @@ class SessionObject(object):
             if params.get('type') == 'cookie':
                 self.__dict__['_sess'] = CookieSession(req, **params)
             else:
-                self.__dict__['_sess'] = Session(req, use_cookies=True,
+                self.__dict__['_sess'] = Session(req, use_cookies=True, userid=self._userid,
                                                  **params)
         return self.__dict__['_sess']
 
@@ -724,3 +730,6 @@ class SessionObject(object):
     def accessed(self):
         """Returns whether or not the session has been accessed"""
         return self.__dict__['_sess'] is not None
+
+    def set_userid(self, userid):
+        self.__dict__['_userid'] = userid
